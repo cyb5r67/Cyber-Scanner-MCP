@@ -124,6 +124,10 @@ C:\projects\other\package.json | Matched: "axios": "0.30.4", "axios": "1.14.1"
 - **Windows:** PowerShell 5.1 or later (built into Windows 10/11)
 - **Linux/macOS:** Bash 4+, standard coreutils (`find`, `wc`, `cat`)
 
+## Version
+
+Last verified commit: `5508f43d2fde1377cd8af202b314f506da408146`
+
 ## License
 
 MIT
