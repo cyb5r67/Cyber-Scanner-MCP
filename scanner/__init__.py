@@ -1,0 +1,3 @@
+"""Cybersecurity Scanner — pluggable security toolkit."""
+
+__version__ = "1.0.0"

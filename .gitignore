@@ -2,6 +2,17 @@
 Infected_Files_Report.txt
 package_json.txt
 
+# Data directories (generated at runtime)
+data/
+logs/
+
+# Python
+__pycache__/
+*.pyc
+*.egg-info/
+dist/
+build/
+
 # IDE
 .vscode/
 .idea/
