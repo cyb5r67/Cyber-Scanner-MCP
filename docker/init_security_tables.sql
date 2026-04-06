@@ -1,4 +1,4 @@
--- Cybersecurity Scanner — PostgreSQL Schema for OB1 Integration
+-- Cyber-Scanner-MCP — PostgreSQL Schema for OB1 Integration
 -- Creates a 'security' schema in the openbrain database.
 -- Safe to re-run (idempotent).
 

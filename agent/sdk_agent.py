@@ -432,7 +432,7 @@ def _build_tool_schemas() -> list[dict]:
 def main():
     parser = argparse.ArgumentParser(
         prog="sdk-agent",
-        description="Cybersecurity Scanner — Autonomous Security Agent",
+        description="Cyber-Scanner-MCP — Autonomous Security Agent",
     )
     parser.add_argument("--task", help="Security task to perform")
     parser.add_argument("--model", default="claude-sonnet-4-6", help="Claude model")

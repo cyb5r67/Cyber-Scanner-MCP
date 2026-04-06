@@ -266,7 +266,7 @@ def _build_cyclonedx(components: list[dict[str, str]], serial: str, timestamp: s
             "timestamp": timestamp,
             "tools": [
                 {
-                    "vendor": "cybersecurity-scanner",
+                    "vendor": "cyber-scanner-mcp",
                     "name": "sbom-generator",
                     "version": "1.0.0",
                 }
@@ -291,11 +291,11 @@ def _build_spdx(components: list[dict[str, str]], serial: str, timestamp: str) -
         "spdxVersion": "SPDX-2.3",
         "dataLicense": "CC0-1.0",
         "SPDXID": "SPDXRef-DOCUMENT",
-        "name": "cybersecurity-scan",
+        "name": "cyber-scanner-mcp-scan",
         "documentNamespace": f"https://spdx.org/spdxdocs/{serial}",
         "creationInfo": {
             "created": timestamp,
-            "creators": ["Tool: cybersecurity-scanner-1.0.0"],
+            "creators": ["Tool: cyber-scanner-mcp-1.0.0"],
         },
         "packages": packages,
     }

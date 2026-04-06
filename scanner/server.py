@@ -11,7 +11,7 @@ from pathlib import Path
 from mcp.server.fastmcp import FastMCP
 
 mcp = FastMCP(
-    name="Cybersecurity Scanner",
+    name="Cyber-Scanner-MCP",
     instructions=(
         "A pluggable cybersecurity toolkit. Available capabilities depend on which "
         "modules are installed. Use list_modules to see what's available. Modules "

@@ -1,4 +1,4 @@
-# Cybersecurity Scanner — Module Documentation
+# Cyber-Scanner-MCP — Module Documentation
 
 Detailed usage guide for all 8 scanner modules. Each module can be used via the CLI, MCP server, or agent integration.
 

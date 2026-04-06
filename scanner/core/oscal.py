@@ -200,7 +200,7 @@ def generate_oscal_assessment(
         "assessment-results": {
             "uuid": document_id,
             "metadata": {
-                "title": "Cybersecurity Scanner Assessment",
+                "title": "Cyber-Scanner-MCP Assessment",
                 "last-modified": now,
                 "version": "1.0.0",
                 "oscal-version": "1.1.2",

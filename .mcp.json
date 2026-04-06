@@ -1,6 +1,6 @@
 {
   "mcpServers": {
-    "cybersecurity-scanner": {
+    "cyber-scanner-mcp": {
       "command": "python",
       "args": ["-m", "scanner.server"],
       "cwd": "/mnt/c/projects/json_corruption"

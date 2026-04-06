@@ -269,7 +269,7 @@ def cmd_stats(args):
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="scanner",
-        description="Cybersecurity Scanner — pluggable security toolkit",
+        description="Cyber-Scanner-MCP — pluggable security toolkit",
     )
     sub = parser.add_subparsers(dest="command", help="Available commands")
 

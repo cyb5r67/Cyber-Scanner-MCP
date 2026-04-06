@@ -1,4 +1,4 @@
-# Cybersecurity Scanner
+# Cyber-Scanner-MCP
 
 A pluggable cybersecurity toolkit with 8 scanner modules, a CLI, an MCP server for AI agent integration, and autonomous agent capabilities. Search for compromised files, check TLS certificates, scan for vulnerabilities, monitor file integrity, generate SBOMs, and produce OSCAL compliance reports.
 
@@ -102,7 +102,7 @@ scanner history --limit 20
 cd /path/to/cybersecurity-scanner
 
 # Or register globally
-claude mcp add cybersecurity-scanner -- python -m scanner.server
+claude mcp add cyber-scanner-mcp -- python -m scanner.server
 ```
 
 Once configured, Claude can use all scanner tools natively in conversation.

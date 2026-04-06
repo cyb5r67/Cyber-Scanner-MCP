@@ -2,7 +2,7 @@ services:
   # MCP Server — connect via Claude Code or Claude Desktop
   mcp-server:
     build: .
-    container_name: cybersec-mcp
+    container_name: cyber-scanner-mcp
     command: python -m scanner.server
     ports:
       - "8000:8000"
@@ -17,7 +17,7 @@ services:
   # CLI — run one-off scan commands
   cli:
     build: .
-    container_name: cybersec-cli
+    container_name: cyber-scanner-cli
     entrypoint: python -m scanner.cli
     volumes:
       - scanner-data:/app/data
@@ -31,7 +31,7 @@ services:
   # API Agent — scheduled/scripted security scans
   api-agent:
     build: .
-    container_name: cybersec-api-agent
+    container_name: cyber-scanner-api-agent
     command: python -m agent.api_agent "${AGENT_INSTRUCTION:-Perform a quick security scan}"
     environment:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
@@ -47,7 +47,7 @@ services:
   # Autonomous Agent — long-running security monitoring
   sdk-agent:
     build: .
-    container_name: cybersec-sdk-agent
+    container_name: cyber-scanner-sdk-agent
     command: python -m agent.sdk_agent --task "${AGENT_TASK:-Monitor systems for security issues}"
     environment:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}

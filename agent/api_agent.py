@@ -351,7 +351,7 @@ def run_agent(
 def main():
     parser = argparse.ArgumentParser(
         prog="api-agent",
-        description="Cybersecurity Scanner — Claude API Agent",
+        description="Cyber-Scanner-MCP — Claude API Agent",
     )
     parser.add_argument("instruction", nargs="?", help="Natural language instruction")
     parser.add_argument("--config", help="Path to JSON config file with instruction and settings")
