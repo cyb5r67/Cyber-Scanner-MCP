@@ -1,0 +1,10 @@
+# Output files
+Infected_Files_Report.txt
+package_json.txt
+
+# IDE
+.vscode/
+.idea/
+
+# Claude Code
+.claude/
