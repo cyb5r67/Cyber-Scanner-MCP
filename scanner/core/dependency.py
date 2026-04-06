@@ -375,6 +375,19 @@ def check_vulnerability(
         "vulnerabilities": [],
     }
 
+    # Check vulnerability cache first (PostgreSQL via OB1)
+    try:
+        from scanner.core.db_backend import get_backend
+
+        cached = get_backend().get_cached_vulnerability(package_name, version, ecosystem)
+        if cached is not None:
+            result["vulnerabilities"] = cached
+            result["vulnerable"] = len(cached) > 0
+            result["source"] = "cache"
+            return result
+    except Exception:
+        pass
+
     payload = json.dumps({
         "package": {
             "name": package_name,
@@ -408,6 +421,7 @@ def check_vulnerability(
         return result
 
     result["vulnerable"] = True
+    result["source"] = "osv.dev"
     for vuln in vulns_raw:
         # Extract severity — OSV uses database_specific or severity list
         severity = "UNKNOWN"
@@ -429,6 +443,15 @@ def check_vulnerability(
             "severity": severity,
             "references": references[:5],  # Limit to first 5 references
         })
+
+    # Cache results in database for future lookups
+    if result["vulnerabilities"]:
+        try:
+            from scanner.core.db_backend import get_backend
+
+            get_backend().cache_vulnerability(package_name, version, ecosystem, result["vulnerabilities"])
+        except Exception:
+            pass
 
     return result
 

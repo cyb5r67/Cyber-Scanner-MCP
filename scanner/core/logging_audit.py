@@ -1,29 +1,26 @@
 """Module 6: Logging & Audit System.
 
-Provides automatic logging of all tool calls to file, API, and SQLite database.
-Every scanner module uses the @audit decorator to log operations automatically.
+Provides automatic logging of all tool calls to file, API, and database.
+Uses db_backend for storage (PostgreSQL via OB1, or SQLite fallback).
+Optionally captures scan summaries as OB1 thoughts for semantic search.
 """
 
 import functools
 import json
 import logging
-import os
-import sqlite3
 import time
 import urllib.request
 from datetime import datetime, timezone
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 # ---------------------------------------------------------------------------
 # Paths
 # ---------------------------------------------------------------------------
 _BASE_DIR = Path(__file__).resolve().parent.parent.parent
 _LOG_DIR = _BASE_DIR / "logs"
-_DATA_DIR = _BASE_DIR / "data"
 _LOG_FILE = _LOG_DIR / "scanner.log"
-_DB_FILE = _DATA_DIR / "scanner.db"
 
 # ---------------------------------------------------------------------------
 # Configuration (mutable at runtime via configure_logging)
@@ -33,6 +30,7 @@ _config: dict[str, Any] = {
     "database_enabled": True,
     "api_url": None,
     "api_key": None,
+    "ob1_thoughts_enabled": True,
     "log_max_bytes": 10 * 1024 * 1024,  # 10 MB
     "log_backup_count": 5,
 }
@@ -57,72 +55,6 @@ def _get_file_logger() -> logging.Logger:
 
 
 # ---------------------------------------------------------------------------
-# SQLite database
-# ---------------------------------------------------------------------------
-def _ensure_db() -> sqlite3.Connection:
-    _DATA_DIR.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(str(_DB_FILE))
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS scan_log (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            timestamp TEXT NOT NULL,
-            tool_name TEXT NOT NULL,
-            parameters TEXT,
-            scope TEXT,
-            results_summary TEXT,
-            duration_seconds REAL,
-            trigger_source TEXT,
-            status TEXT
-        )
-    """)
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS scan_results (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            scan_log_id INTEGER NOT NULL,
-            detail_type TEXT,
-            detail_data TEXT,
-            FOREIGN KEY (scan_log_id) REFERENCES scan_log(id)
-        )
-    """)
-    conn.commit()
-    return conn
-
-
-def _log_to_db(record: dict[str, Any]) -> int:
-    conn = _ensure_db()
-    cursor = conn.execute(
-        """INSERT INTO scan_log
-           (timestamp, tool_name, parameters, scope, results_summary,
-            duration_seconds, trigger_source, status)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-        (
-            record["timestamp"],
-            record["tool_name"],
-            json.dumps(record.get("parameters")),
-            json.dumps(record.get("scope")),
-            json.dumps(record.get("results_summary")),
-            record.get("duration_seconds"),
-            record.get("trigger_source", "unknown"),
-            record.get("status", "completed"),
-        ),
-    )
-    scan_log_id = cursor.lastrowid
-    conn.commit()
-    conn.close()
-    return scan_log_id
-
-
-def _log_detail_to_db(scan_log_id: int, detail_type: str, detail_data: Any) -> None:
-    conn = _ensure_db()
-    conn.execute(
-        "INSERT INTO scan_results (scan_log_id, detail_type, detail_data) VALUES (?, ?, ?)",
-        (scan_log_id, detail_type, json.dumps(detail_data)),
-    )
-    conn.commit()
-    conn.close()
-
-
-# ---------------------------------------------------------------------------
 # API logger
 # ---------------------------------------------------------------------------
 def _log_to_api(record: dict[str, Any]) -> None:
@@ -141,7 +73,6 @@ def _log_to_api(record: dict[str, Any]) -> None:
             req.add_header("Authorization", f"Bearer {_config['api_key']}")
         urllib.request.urlopen(req, timeout=10)
     except Exception:
-        # Silent failure — don't break scanning because logging API is down
         pass
 
 
@@ -157,7 +88,7 @@ def log_operation(
     trigger_source: str = "unknown",
     status: str = "completed",
     details: list[dict] | None = None,
-) -> int | None:
+) -> str | int | None:
     """Log a tool operation to all enabled backends.
 
     Returns the scan_log_id from the database (or None if DB is disabled).
@@ -177,21 +108,42 @@ def log_operation(
     if _config["file_enabled"]:
         _get_file_logger().info(json.dumps(record))
 
-    # Database backend
+    # Database backend (PostgreSQL or SQLite via db_backend)
     scan_log_id = None
     if _config["database_enabled"]:
-        scan_log_id = _log_to_db(record)
-        if details and scan_log_id:
-            for detail in details:
-                _log_detail_to_db(
-                    scan_log_id,
-                    detail.get("type", "result"),
-                    detail.get("data"),
-                )
+        try:
+            from scanner.core.db_backend import get_backend
+
+            backend = get_backend()
+            scan_log_id = backend.log_scan(record)
+            if details and scan_log_id is not None:
+                for detail in details:
+                    backend.log_detail(
+                        scan_log_id,
+                        detail.get("type", "result"),
+                        detail.get("data"),
+                    )
+        except Exception:
+            pass
 
     # API backend
     if _config.get("api_url"):
         _log_to_api(record)
+
+    # OB1 thought capture
+    if _config["ob1_thoughts_enabled"]:
+        try:
+            from scanner.core.ob1_integration import capture_scan_thought
+
+            capture_scan_thought(
+                tool_name=tool_name,
+                parameters=parameters,
+                results_summary=results_summary,
+                duration=duration_seconds,
+                status=status,
+            )
+        except Exception:
+            pass
 
     return scan_log_id
 
@@ -283,25 +235,9 @@ def scan_history(
     Returns:
         Dict with 'records' list and 'total' count.
     """
-    conn = _ensure_db()
-    query = "SELECT * FROM scan_log WHERE 1=1"
-    params: list[Any] = []
+    from scanner.core.db_backend import get_backend
 
-    if tool_name:
-        query += " AND tool_name = ?"
-        params.append(tool_name)
-    if date_from:
-        query += " AND timestamp >= ?"
-        params.append(date_from)
-
-    query += " ORDER BY id DESC LIMIT ?"
-    params.append(limit)
-
-    cursor = conn.execute(query, params)
-    columns = [desc[0] for desc in cursor.description]
-    rows = [dict(zip(columns, row)) for row in cursor.fetchall()]
-    conn.close()
-
+    rows = get_backend().query_scan_history(limit, tool_name, date_from)
     return {"records": rows, "total": len(rows)}
 
 
@@ -314,42 +250,9 @@ def get_scan_stats(days: int = 30) -> dict:
     Returns:
         Dict with total_scans, total_errors, scans_by_tool, and avg_duration.
     """
-    conn = _ensure_db()
-    cutoff = datetime.now(timezone.utc).isoformat()[:10]  # rough cutoff
+    from scanner.core.db_backend import get_backend
 
-    cursor = conn.execute(
-        "SELECT COUNT(*) FROM scan_log WHERE timestamp >= ?",
-        (cutoff,),
-    )
-    total = cursor.fetchone()[0]
-
-    cursor = conn.execute(
-        "SELECT COUNT(*) FROM scan_log WHERE status = 'error' AND timestamp >= ?",
-        (cutoff,),
-    )
-    errors = cursor.fetchone()[0]
-
-    cursor = conn.execute(
-        "SELECT tool_name, COUNT(*) as cnt FROM scan_log WHERE timestamp >= ? GROUP BY tool_name ORDER BY cnt DESC",
-        (cutoff,),
-    )
-    by_tool = {row[0]: row[1] for row in cursor.fetchall()}
-
-    cursor = conn.execute(
-        "SELECT AVG(duration_seconds) FROM scan_log WHERE timestamp >= ? AND duration_seconds IS NOT NULL",
-        (cutoff,),
-    )
-    avg_duration = cursor.fetchone()[0]
-
-    conn.close()
-
-    return {
-        "period_days": days,
-        "total_scans": total,
-        "total_errors": errors,
-        "scans_by_tool": by_tool,
-        "avg_duration_seconds": round(avg_duration, 3) if avg_duration else None,
-    }
+    return get_backend().get_scan_stats(days)
 
 
 def configure_logging(
@@ -357,14 +260,16 @@ def configure_logging(
     database: bool | None = None,
     api_url: str | None = None,
     api_key: str | None = None,
+    ob1_thoughts: bool | None = None,
 ) -> dict:
     """Enable or disable logging backends.
 
     Args:
         file: Enable/disable file logging.
-        database: Enable/disable SQLite logging.
+        database: Enable/disable database logging.
         api_url: Set API webhook URL (None to disable).
         api_key: Set API authentication key.
+        ob1_thoughts: Enable/disable OB1 thought capture.
 
     Returns:
         Current logging configuration.
@@ -377,12 +282,18 @@ def configure_logging(
         _config["api_url"] = api_url
     if api_key is not None:
         _config["api_key"] = api_key
+    if ob1_thoughts is not None:
+        _config["ob1_thoughts_enabled"] = ob1_thoughts
+
+    from scanner.core.db_backend import get_backend_type
 
     return {
         "file_enabled": _config["file_enabled"],
         "database_enabled": _config["database_enabled"],
+        "database_backend": get_backend_type(),
         "api_url": _config["api_url"],
         "api_key": "***" if _config["api_key"] else None,
+        "ob1_thoughts_enabled": _config["ob1_thoughts_enabled"],
     }
 
 

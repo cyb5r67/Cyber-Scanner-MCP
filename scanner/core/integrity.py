@@ -57,16 +57,26 @@ def _baseline_path(baseline_name: str) -> Path:
 
 
 def _load_baseline(baseline_name: str) -> dict[str, Any]:
-    """Load a baseline JSON file and return its contents."""
+    """Load a baseline from the database backend (PostgreSQL or JSON file)."""
+    from scanner.core.db_backend import get_backend
+
+    data = get_backend().load_baseline(baseline_name)
+    if data is not None:
+        return data
+    # Fallback: try JSON file directly (for backwards compatibility)
     path = _baseline_path(baseline_name)
     if not path.exists():
-        raise FileNotFoundError(f"Baseline '{baseline_name}' not found at {path}")
+        raise FileNotFoundError(f"Baseline '{baseline_name}' not found")
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
 
 
 def _save_baseline(baseline_name: str, data: dict[str, Any]) -> Path:
-    """Save baseline data as a JSON file and return the path."""
+    """Save baseline data via the database backend."""
+    from scanner.core.db_backend import get_backend
+
+    get_backend().save_baseline(baseline_name, data)
+    # Also save JSON file as backup/for SQLite mode
     _BASELINES_DIR.mkdir(parents=True, exist_ok=True)
     path = _baseline_path(baseline_name)
     with open(path, "w", encoding="utf-8") as f:

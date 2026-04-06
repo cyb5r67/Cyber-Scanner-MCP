@@ -7,15 +7,16 @@ WORKDIR /app
 
 # Install system dependencies (nmap for Module 4)
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends nmap && \
+    apt-get install -y --no-install-recommends nmap libpq-dev && \
     rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
 COPY pyproject.toml .
-RUN pip install --no-cache-dir -e . 2>/dev/null || pip install --no-cache-dir \
+RUN pip install --no-cache-dir -e ".[ob1]" 2>/dev/null || pip install --no-cache-dir \
     "fastmcp>=2.0" \
     "python-nmap>=0.7.1" \
-    "anthropic>=0.50.0"
+    "anthropic>=0.50.0" \
+    "psycopg2-binary>=2.9"
 
 # Copy application code
 COPY scanner/ scanner/

@@ -12,6 +12,9 @@ dependencies = [
     "anthropic>=0.50.0",
 ]
 
+[project.optional-dependencies]
+ob1 = ["psycopg2-binary>=2.9"]
+
 [project.scripts]
 scanner = "scanner.cli:main"
 

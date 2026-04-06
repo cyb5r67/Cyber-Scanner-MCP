@@ -1,0 +1,62 @@
+# OB1 Open-Brain Integration Override
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.ob1.yml up -d
+#
+# First-time setup (creates security schema in OB1's database):
+#   docker compose -f docker-compose.yml -f docker-compose.ob1.yml --profile init run --rm init-security-db
+#
+# Requires OB1 to be running first:
+#   cd /path/to/OB1/docker && docker compose up -d
+
+services:
+  mcp-server:
+    environment:
+      - OB1_DATABASE_URL=postgres://openbrain:${OB1_POSTGRES_PASSWORD:-openbrain}@ob1-postgres:5432/openbrain
+      - OB1_MCP_URL=http://ob1-mcp:3000
+      - OB1_MCP_KEY=${OB1_MCP_ACCESS_KEY}
+    networks:
+      - ob1_default
+
+  cli:
+    environment:
+      - OB1_DATABASE_URL=postgres://openbrain:${OB1_POSTGRES_PASSWORD:-openbrain}@ob1-postgres:5432/openbrain
+      - OB1_MCP_URL=http://ob1-mcp:3000
+      - OB1_MCP_KEY=${OB1_MCP_ACCESS_KEY}
+    networks:
+      - ob1_default
+
+  api-agent:
+    environment:
+      - OB1_DATABASE_URL=postgres://openbrain:${OB1_POSTGRES_PASSWORD:-openbrain}@ob1-postgres:5432/openbrain
+      - OB1_MCP_URL=http://ob1-mcp:3000
+      - OB1_MCP_KEY=${OB1_MCP_ACCESS_KEY}
+    networks:
+      - ob1_default
+
+  sdk-agent:
+    environment:
+      - OB1_DATABASE_URL=postgres://openbrain:${OB1_POSTGRES_PASSWORD:-openbrain}@ob1-postgres:5432/openbrain
+      - OB1_MCP_URL=http://ob1-mcp:3000
+      - OB1_MCP_KEY=${OB1_MCP_ACCESS_KEY}
+    networks:
+      - ob1_default
+
+  # One-time setup: creates security.* tables in OB1's database
+  init-security-db:
+    image: postgres:17
+    command: >
+      psql
+      postgres://openbrain:${OB1_POSTGRES_PASSWORD:-openbrain}@ob1-postgres:5432/openbrain
+      -f /init.sql
+    volumes:
+      - ./docker/init_security_tables.sql:/init.sql:ro
+    networks:
+      - ob1_default
+    profiles:
+      - init
+
+networks:
+  ob1_default:
+    external: true
+    name: ob1_default
